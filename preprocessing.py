@@ -10,11 +10,11 @@ def crop_spectrogram(spectrogram,onset):
     index = int(index)
 
     result = spectrogram[0:229,index:int(index+constants.BLOCK_SIZE_BIN)]
-    '''
+   
     librosa.display.specshow(result, sr=constants.SAMPLE_RATE, hop_length=512, x_axis='time', y_axis='mel');
     plt.colorbar(format='%+2.0f dB')
     plt.show()
-    '''
+  
     return result
 
 

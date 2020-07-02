@@ -14,12 +14,12 @@ from glob import glob
 import constants
 from tqdm import tqdm
 import preprocessing
-
 from torch.utils.data import Dataset
 
 
 class MapsDataset(Dataset):
     def __init__(self,audio_path,tsv_path):
+
 
         self.audio_path = audio_path
         self.tsv_path = tsv_path
@@ -50,11 +50,11 @@ class MapsDataset(Dataset):
             return torch.load(saved_data_path)
 
 
-        audio,sr = sf.read(audio)
-        assert(sr == constants.SAMPLE_RATE)
+        audio,sr = librosa.load(audio, mono=True) # instead of sf.read() actually, librosa force sample_rate , a good thing.
+        assert (sr == constants.SAMPLE_RATE)
 
-        spec = librosa.feature.melspectrogram(audio,sr, n_fft=1024, hop_length=512, n_mels=229)
-      #  spec = librosa.power_to_db(spec, ref=np.max)
+        spec = librosa.feature.melspectrogram(audio,sr, n_fft=constants.FFT_SIZE, hop_length=constants.MEL_HOP_LENGTH, n_mels=constants.N_MEL)
+       # spec = librosa.power_to_db(spec, ref=np.max)
 
 
 
@@ -79,6 +79,14 @@ class MapsDataset(Dataset):
 
             relative_note = int(note) - constants.MIN_MIDI # we need to add + MIN_MIDI to network result to get midi pitch.
             sliced_spec = preprocessing.crop_spectrogram(spec,onset)
+
+
+
+          # sliced_spec = np.expand_dims(sliced_spec, 0) # <---------------- WE EXPEND DIM ??? CHANNEL
+            sliced_spec = torch.from_numpy(sliced_spec)
+
+
+
             self.data.append((sliced_spec,relative_note)) # we should save this ??
 
      

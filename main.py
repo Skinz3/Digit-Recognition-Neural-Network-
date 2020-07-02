@@ -16,14 +16,14 @@ import sys
 from model import Net
 from dataset import MapsDataset
 import constants
-
+import evaluate
 
 def train():
 
     train = MapsDataset("MAPS/flac/","MAPS/tsv/")
 
     test = MapsDataset("MAPS/flac_test/","MAPS/tsv_test/")
-
+    
     trainset = torch.utils.data.DataLoader(train, batch_size=10, shuffle=True)
     testset = torch.utils.data.DataLoader(test, batch_size=10, shuffle=False)
 
@@ -38,8 +38,6 @@ def train():
     # to high learning rate can lead to chaotic gradiant descent
     LEARNING_RATE = 0.001
 
-    
-
     optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE) 
 
     for epoch in range(EPOCHS): # We iterate 3 time over all our training data data
@@ -48,22 +46,31 @@ def train():
             # X is cnn input data (a window of spectrogram)
             # y is expected result (a note)
             X, y = data  
+           
+            X = X.view(-1,constants.N_MEL * constants.BLOCK_SIZE_BIN)
+
 
             net.zero_grad()  # sets gradients to 0 before loss calc every step
-
-            output = net(X.view(-1,constants.N_MEL * constants.BLOCK_SIZE_BIN))  # pass in the reshaped batch (Width = 100 (window size) Height = 229 (log scale))
+         
+            output = net(X)  # pass in the reshaped batch (Width = 100 (window size) Height = 229 (log scale))
 
             loss = F.nll_loss(output, y)  # calc and grab the loss value
             loss.backward()  # apply this loss backwards thru the network's parameters
             optimizer.step()  # attempt to optimize weights 
-        print(loss)  # print loss. We hope loss (a measure of wrong-ness) declines! 
+        
+        accuracy = compute_accuracy(net,testset)
+        print("Epoch: "+ str(epoch+1)+ " "+str(loss)+" Accuracy: "+str(accuracy))
+    
 
+    torch.save(net.state_dict(), "model.pt")
+    print("ended.")
 
+def compute_accuracy(net,testset):
     correct = 0
     total = 0
 
     with torch.no_grad():
-        for data in trainset:
+        for data in testset:
             X, y = data # X is i cropped spectrogram. y is the midi note
 
             output = net(X.view(-1,constants.N_MEL * constants.BLOCK_SIZE_BIN))
@@ -73,26 +80,10 @@ def train():
                     correct += 1
                 total += 1
 
-    print("Accuracy: ", round(correct/total, 3))  
+    return round(correct/total, 3)
 
-    torch.save(net.state_dict(), "model.pt")
-
-
-
-def evaluate():
-    net = Net() 
-    net.load_state_dict(torch.load("model.pt"))
-    net.eval()
-
-    im = Image.open("test.png") # Can be many different formats.
-    pixels =  torch.FloatTensor((list(im.getdata())))
-    
-    result = net(pixels.view(-1,28*28))
-
-    print(torch.argmax(result))
-    
-
-
+ 
+#evaluate.to_midi("test.wav")
 train()
 
  
